@@ -186,13 +186,23 @@
 
   const money = n => "$" + (n||0).toLocaleString("es-CL");
 
+  // FastAPI devuelve `detail` como texto, o como lista de objetos cuando falla la validacion (422).
+  function apiError(d, status){
+    if(d && typeof d.detail === "string") return d.detail;
+    if(d && Array.isArray(d.detail)){
+      const m = d.detail.map(e => String((e && e.msg) || "").replace(/^Value error, /, "")).filter(Boolean).join(" · ");
+      if(m) return m;
+    }
+    return "Error " + status;
+  }
+
   // fetch con timeout opcional (AbortController) para no colgarse en un arranque en frío.
   async function api(path, opts, timeoutMs){
     const ctrl = new AbortController();
     const t = timeoutMs ? setTimeout(()=>ctrl.abort(), timeoutMs) : null;
     try{
       const r = await fetch(API + path, Object.assign({}, opts||{}, {signal: ctrl.signal}));
-      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; throw new Error((d&&d.detail) || ("Error "+r.status)); }
+      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; throw new Error(apiError(d, r.status)); }
       return r.status===204 ? null : r.json();
     } finally { if(t) clearTimeout(t); }
   }
