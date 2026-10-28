@@ -1,6 +1,7 @@
 """Lógica de disponibilidad: genera horarios libres y evita el doble-booking."""
 from __future__ import annotations
 
+import calendar
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
@@ -70,3 +71,36 @@ def is_slot_free(db: Session, service: models.Service, start_at: datetime) -> bo
 
     booked = _booked_that_day(db, start_at.date())
     return not any(_overlaps(start_at, end_at, b.start_at, b.end_at) for b in booked)
+
+
+# ---------- Calendario mensual (HU-02) ----------
+DAY_PAST = "past"            # día anterior a hoy
+DAY_CLOSED = "closed"        # el negocio no abre ese día de la semana
+DAY_FULL = "full"            # abre, pero no queda ningún horario libre
+DAY_AVAILABLE = "available"  # hay al menos un horario libre
+
+
+def month_availability(
+    db: Session, service: models.Service, year: int, month: int, today: date | None = None
+) -> list[dict]:
+    """Estado de cada día de un mes para pintar el calendario de reservas.
+
+    Reutiliza `generate_slots`, así el calendario y la lista de horarios de un
+    día nunca se contradicen (mismas reglas de horario, pasado y doble-booking).
+    """
+    today = today or local_now().date()
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    result: list[dict] = []
+    for n in range(1, days_in_month + 1):
+        day = date(year, month, n)
+        free = 0
+        if day < today:
+            status = DAY_PAST
+        elif day.weekday() in settings.closed_weekdays_set:
+            status = DAY_CLOSED
+        else:
+            free = len(generate_slots(db, service, day))
+            status = DAY_AVAILABLE if free else DAY_FULL
+        result.append({"date": day, "status": status, "free_slots": free})
+    return result

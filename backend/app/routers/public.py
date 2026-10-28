@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from .. import crud, schemas
 from ..availability import generate_slots, is_slot_free
+from ..availability import month_availability  # HU-02: calendario mensual
 from ..config import settings
 from ..database import get_db
 from ..notifications import confirmation_message, send_whatsapp
@@ -43,6 +44,25 @@ def get_availability(
     if not service or not service.active:
         raise HTTPException(status_code=404, detail="Servicio no encontrado.")
     return generate_slots(db, service, day)
+
+
+@router.get(
+    "/availability/month",
+    response_model=list[schemas.DayAvailabilityOut],
+    summary="Disponibilidad del mes (calendario)",
+)
+def get_month_availability(
+    service_id: int = Query(..., description="ID del servicio"),
+    month: str = Query(
+        ..., pattern=r"^[1-9]\d{3}-(0[1-9]|1[0-2])$", description="Mes en formato YYYY-MM"
+    ),
+    db: Session = Depends(get_db),
+):
+    service = crud.get_service(db, service_id)
+    if not service or not service.active:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+    year, mon = (int(x) for x in month.split("-"))
+    return month_availability(db, service, year, mon)
 
 
 @router.post(

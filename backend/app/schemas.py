@@ -1,7 +1,7 @@
 """Esquemas Pydantic (validación de entrada/salida de la API)."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -91,6 +91,13 @@ class ConfigOut(BaseModel):
     close_hour: int
     slot_interval_minutes: int
     closed_weekdays: list[int]
+
+
+class DayAvailabilityOut(BaseModel):
+    """Un día del calendario: past | closed | full | available."""
+    date: date
+    status: str
+    free_slots: int
 
 
 class StatsOut(BaseModel):
