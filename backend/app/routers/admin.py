@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .. import crud, schemas
 from ..auth import require_admin
 from ..database import get_db
+from ..forecast import build_forecast
 from ..reminders import run_reminders
 
 router = APIRouter(
@@ -78,6 +79,15 @@ def remove_appointment(appt_id: int, db: Session = Depends(get_db)):
 @router.get("/stats", response_model=schemas.StatsOut, summary="Estadísticas")
 def get_stats(db: Session = Depends(get_db)):
     return crud.stats(db)
+
+
+@router.get("/forecast", summary="Histórico y previsión de la demanda")
+def get_forecast(
+    history_days: int = Query(56, ge=7, le=365, description="Días de histórico a analizar"),
+    horizon_days: int = Query(14, ge=1, le=60, description="Días a pronosticar"),
+    db: Session = Depends(get_db),
+):
+    return build_forecast(db, history_days=history_days, horizon_days=horizon_days)
 
 
 @router.post("/reminders/run", summary="Enviar recordatorios ahora")

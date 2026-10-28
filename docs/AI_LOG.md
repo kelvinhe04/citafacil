@@ -8,6 +8,7 @@ Cada fila la llena quien hizo la interacción. Las capturas van en el Word de ev
 | Fecha | Persona | HU | Actividad | Herramienta IA | Qué se solicitó | Resultado | Decisión humana |
 |---|---|---|---|---|---|---|---|
 | 27/10 | | | Arquitectura | | Analizar el repo antes de modificar | | |
+| 28/10 | Einer | HU-03 | Implementación | Claude Code (Sonnet 5.5) | Endpoint de histórico/previsión de demanda, gráficos en `admin.html` y pruebas | `forecast.py`, `GET /api/admin/forecast`, gráficos de barras sin librerías, 7 pruebas nuevas (13 en total pasan) | Pendiente de revisión: probar a mano en el panel |
 | | | | | | | | |
 
 Ejemplos de "Decisión humana": *Aceptada*, *Aceptada parcialmente*, *Modificada*, *Corregida*, *Rechazada*.
