@@ -134,10 +134,20 @@
   const TOKEN = params.get("t") || "";
   const $ = id => document.getElementById(id);
 
+  // FastAPI devuelve `detail` como texto, o como lista de objetos cuando falla la validacion (422).
+  function apiError(data, status){
+    if (data && typeof data.detail === "string") return data.detail;
+    if (data && Array.isArray(data.detail)) {
+      const m = data.detail.map(e => String((e && e.msg) || "").replace(/^Value error, /, "")).filter(Boolean).join(" · ");
+      if (m) return m;
+    }
+    return "Error " + status;
+  }
+
   async function api(path, opts){
     const r = await fetch(API + path, opts || {});
     let data = null; try { data = await r.json(); } catch (e) {}
-    if (!r.ok) { const err = new Error((data && data.detail) || ("Error " + r.status)); err.status = r.status; throw err; }
+    if (!r.ok) { const err = new Error(apiError(data, r.status)); err.status = r.status; throw err; }
     return data;
   }
   const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
