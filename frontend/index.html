@@ -202,7 +202,7 @@
     const t = timeoutMs ? setTimeout(()=>ctrl.abort(), timeoutMs) : null;
     try{
       const r = await fetch(API + path, Object.assign({}, opts||{}, {signal: ctrl.signal}));
-      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; throw new Error(apiError(d, r.status)); }
+      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; const err = new Error(apiError(d, r.status)); err.status = r.status; throw err; }
       return r.status===204 ? null : r.json();
     } finally { if(t) clearTimeout(t); }
   }
@@ -356,8 +356,10 @@
       $("cardDone").scrollIntoView({behavior:"smooth",block:"center"});
     }catch(e){
       msg.className="msg err";
-      msg.textContent = e.message==="Error 409" ? "Ese horario ya fue tomado. Elige otro." : e.message;
-      loadSlots();
+      msg.textContent = e.status===409 ? "Ese horario ya fue tomado. Elige otro." : e.message;
+      // Solo se recargan los horarios si el elegido se ocupo (409). Con otros errores (p. ej. celular
+      // invalido) se conserva la hora elegida para que el cliente corrija y reintente.
+      if(e.status===409) loadSlots();
     }finally{ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> Confirmar reserva'; }
   });
 
