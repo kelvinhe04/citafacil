@@ -114,3 +114,44 @@ def test_admin_auth():
     assert client.get(
         "/api/admin/appointments", headers={"X-Admin-Token": "test-token"}
     ).status_code == 200  # correcto
+
+
+# ---------- HU-01: reserva con datos guardados ----------
+def _book(sid, start, name="Camila", phone="+56 9 4291 6570"):
+    return client.post(
+        "/api/appointments",
+        json={"customer_name": name, "customer_phone": phone,
+              "service_id": sid, "start_at": start.isoformat()},
+    )
+
+
+def test_saved_phone_normalization_is_idempotent():
+    """El front guarda el celular normalizado: volver a normalizarlo no debe cambiarlo."""
+    once = normalize_cl_phone("4291 6570")
+    assert normalize_cl_phone(once) == once == "+56942916570"
+
+
+def test_saved_customer_data_roundtrip():
+    """La API devuelve los datos normalizados; reenviarlos tal cual (reserva en un clic) funciona."""
+    sid = client.get("/api/services").json()[0]["id"]
+    first = _next_open_day_at(11)
+
+    r1 = _book(sid, first, phone="+56 9 4291 6570")
+    assert r1.status_code == 201, r1.text
+    saved = r1.json()
+    assert saved["customer_phone"] == "+56942916570"  # esto es lo que guarda el front
+
+    # Segunda reserva en otro horario usando solo los datos guardados (sin notas)
+    r2 = _book(sid, first + timedelta(hours=2), name=saved["customer_name"], phone=saved["customer_phone"])
+    assert r2.status_code == 201, r2.text
+    assert r2.json()["customer_phone"] == saved["customer_phone"]
+    assert r2.json()["notes"] == ""
+
+
+def test_quick_booking_on_taken_slot_returns_409():
+    """Si el horario elegido ya se ocupó, la reserva rápida recibe 409 (el front avisa y recarga horarios)."""
+    sid = client.get("/api/services").json()[0]["id"]
+    start = _next_open_day_at(15)
+    assert _book(sid, start, name="Ana", phone="942916570").status_code == 201
+    r = _book(sid, start, name="Camila", phone="+56942916570")
+    assert r.status_code == 409
