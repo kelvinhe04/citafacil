@@ -5,9 +5,10 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas
+from .. import crud, export, models, schemas
 from ..auth import require_admin
 from ..database import get_db
 from ..reminders import run_reminders
@@ -55,6 +56,33 @@ def all_appointments(
     db: Session = Depends(get_db),
 ):
     return crud.list_appointments(db, status=status, day=day)
+
+
+@router.get(
+    "/appointments/export",
+    summary="Exportar citas a CSV",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {}}, "description": "Archivo CSV"}},
+)
+def export_appointments(
+    status: Optional[str] = Query(None, description="Filtrar por estado"),
+    date_from: Optional[date] = Query(None, description="Desde YYYY-MM-DD (inclusive)"),
+    date_to: Optional[date] = Query(None, description="Hasta YYYY-MM-DD (inclusive)"),
+    db: Session = Depends(get_db),
+):
+    if status and status not in models.VALID_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Estado inválido. Debe ser uno de: {sorted(models.VALID_STATUSES)}",
+        )
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="La fecha 'desde' no puede ser posterior a 'hasta'.")
+    appts = crud.list_appointments(db, status=status, date_from=date_from, date_to=date_to)
+    return Response(
+        content=export.appointments_to_csv(appts),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{export.csv_filename()}"'},
+    )
 
 
 @router.patch("/appointments/{appt_id}", response_model=schemas.AppointmentOut, summary="Cambiar estado")
