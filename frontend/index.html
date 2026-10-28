@@ -156,6 +156,7 @@
         <div class="ic"><i class="fa-solid fa-circle-check"></i></div>
         <h3>¡Reserva confirmada!</h3>
         <p id="doneMsg"></p>
+        <a class="btn ghost" id="manageLink" style="display:none;margin-right:8px"><i class="fa-solid fa-sliders"></i> Gestionar mi cita</a>
         <button class="btn" onclick="location.reload()"><i class="fa-solid fa-plus"></i> Hacer otra reserva</button>
       </div>
     </div>
@@ -336,10 +337,15 @@
     try{
       const payload={customer_name:name, customer_phone:phone, service_id:state.service.id,
         start_at:`${state.date}T${state.time}:00`, notes:$("notes").value.trim()};
-      await api("/api/appointments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}, 65000);
+      const appt = await api("/api/appointments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}, 65000);
       const d=new Date(state.date+"T"+state.time);
       const fecha=d.toLocaleDateString("es-CL",{weekday:"long",day:"2-digit",month:"long"});
       $("doneMsg").innerHTML=`Te esperamos el <b>${fecha}</b> a las <b>${state.time}</b>.<br>Te enviamos la confirmación por WhatsApp a ${phone}.`;
+      if(appt && appt.manage_token){  // enlace para cancelar/reprogramar esta cita (HU-04)
+        const ml=$("manageLink");
+        ml.href="manage.html?t="+encodeURIComponent(appt.manage_token)+"&api="+encodeURIComponent(API);
+        ml.style.display="inline-flex";
+      }
       ["cardSvc","cardWhen","cardWho"].forEach(id=>$(id).style.display="none");
       document.querySelector(".steps").style.display="none";
       $("cardDone").style.display="block";
