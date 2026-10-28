@@ -41,7 +41,7 @@ cd backend
 python -m venv .venv && .venv\Scripts\activate        # Windows (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements.txt
 cp .env.example .env                                  # ajustar ADMIN_TOKEN
-python seed.py                                        # datos de ejemplo
+python seed.py --historico                            # datos de ejemplo + 8 semanas de histórico (para ver los gráficos de previsión)
 python -m uvicorn app.main:app --reload               # API en http://localhost:8000/docs
 ```
 
