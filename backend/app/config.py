@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     admin_token: str = "cambia-este-token-admin"
     cors_origins: str = "*"      # separado por comas, o "*" para todos
 
+    # --- Autogestión de citas (cancelar / reprogramar con un enlace) ---
+    # Clave para firmar los enlaces. Si está vacía se usa ADMIN_TOKEN.
+    manage_secret: str = ""
+    # Horas mínimas de anticipación para cancelar o reprogramar.
+    manage_min_hours_before: int = 2
+    # URL pública del frontend (ej: https://usuario.github.io/citafacil). Si se define,
+    # el WhatsApp de confirmación incluye el enlace para gestionar la cita.
+    frontend_url: str = ""
+
     # --- Twilio / WhatsApp ---
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
@@ -43,6 +52,10 @@ class Settings(BaseSettings):
     @property
     def closed_weekdays_set(self) -> set[int]:
         return {int(x) for x in self.closed_weekdays.split(",") if x.strip() != ""}
+
+    @property
+    def manage_key(self) -> str:
+        return self.manage_secret or self.admin_token
 
     @property
     def cors_origins_list(self) -> list[str]:
