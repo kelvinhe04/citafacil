@@ -84,6 +84,7 @@ pip install -r requirements.txt
 
 cp .env.example .env          # ajusta ADMIN_TOKEN y lo que quieras
 python seed.py                # carga servicios y citas de ejemplo (opcional)
+python seed.py --historico    # ademas crea ~8 semanas de citas pasadas (para los graficos de prevision)
 python -m uvicorn app.main:app --reload
 ```
 
