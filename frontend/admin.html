@@ -152,6 +152,7 @@
           </div>
           <button class="btn ghost sm" onclick="loadAppointments()"><i class="fa-solid fa-rotate"></i> Actualizar</button>
           <button class="btn ghost sm" onclick="clearFilters()">Limpiar</button>
+          <button class="btn ghost sm" id="exportBtn" onclick="exportCsv()" title="Descarga las reservas con los filtros actuales"><i class="fa-solid fa-file-csv"></i> Exportar CSV</button>
           <button class="btn sm" id="remindBtn" onclick="runReminders()"><i class="fa-brands fa-whatsapp"></i> Enviar recordatorios</button>
         </div>
         <div style="overflow-x:auto">
@@ -354,6 +355,30 @@
   }
 
   function clearFilters(){ $("fStatus").value=""; $("fDate").value=""; loadAppointments(); }
+
+  /* ====== EXPORTAR A CSV (HU-05) ====== */
+  // Exporta lo mismo que muestra la tabla: mismos filtros de fecha y estado.
+  async function exportCsv(){
+    const params = new URLSearchParams();
+    if($("fStatus").value) params.set("status", $("fStatus").value);
+    if($("fDate").value){ params.set("date_from", $("fDate").value); params.set("date_to", $("fDate").value); }
+    const b=$("exportBtn"); b.disabled=true; const old=b.innerHTML; b.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Exportando…';
+    try{
+      // fetch + blob (y no un enlace directo) porque el endpoint exige la cabecera X-Admin-Token.
+      const r = await fetch(API + "/api/admin/appointments/export" + (params.toString() ? "?"+params : ""), {headers:{"X-Admin-Token": TOKEN}});
+      if(r.status===401){ logout(); return; }
+      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; throw new Error((d && typeof d.detail==="string" && d.detail) || ("Error "+r.status)); }
+      const url = URL.createObjectURL(await r.blob());
+      // El nombre se arma aquí: por CORS el navegador no expone la cabecera Content-Disposition.
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reservas_" + ($("fDate").value || "todas") + ($("fStatus").value ? "_"+$("fStatus").value : "") + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+      toast("CSV descargado","ok");
+    }catch(e){ toast(e.message,"err"); }
+    finally{ b.disabled=false; b.innerHTML=old; }
+  }
 
   /* init */
   if(TOKEN){ showDash(); }
