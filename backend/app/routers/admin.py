@@ -5,11 +5,13 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas
+from .. import crud, export, models, schemas
 from ..auth import require_admin
 from ..database import get_db
+from ..forecast import build_forecast
 from ..reminders import run_reminders
 
 router = APIRouter(
@@ -57,6 +59,33 @@ def all_appointments(
     return crud.list_appointments(db, status=status, day=day)
 
 
+@router.get(
+    "/appointments/export",
+    summary="Exportar citas a CSV",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {}}, "description": "Archivo CSV"}},
+)
+def export_appointments(
+    status: Optional[str] = Query(None, description="Filtrar por estado"),
+    date_from: Optional[date] = Query(None, description="Desde YYYY-MM-DD (inclusive)"),
+    date_to: Optional[date] = Query(None, description="Hasta YYYY-MM-DD (inclusive)"),
+    db: Session = Depends(get_db),
+):
+    if status and status not in models.VALID_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Estado inválido. Debe ser uno de: {sorted(models.VALID_STATUSES)}",
+        )
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="La fecha 'desde' no puede ser posterior a 'hasta'.")
+    appts = crud.list_appointments(db, status=status, date_from=date_from, date_to=date_to)
+    return Response(
+        content=export.appointments_to_csv(appts),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{export.csv_filename()}"'},
+    )
+
+
 @router.patch("/appointments/{appt_id}", response_model=schemas.AppointmentOut, summary="Cambiar estado")
 def change_status(appt_id: int, payload: schemas.AppointmentStatusUpdate, db: Session = Depends(get_db)):
     appt = crud.get_appointment(db, appt_id)
@@ -78,6 +107,15 @@ def remove_appointment(appt_id: int, db: Session = Depends(get_db)):
 @router.get("/stats", response_model=schemas.StatsOut, summary="Estadísticas")
 def get_stats(db: Session = Depends(get_db)):
     return crud.stats(db)
+
+
+@router.get("/forecast", summary="Histórico y previsión de la demanda")
+def get_forecast(
+    history_days: int = Query(56, ge=7, le=365, description="Días de histórico a analizar"),
+    horizon_days: int = Query(14, ge=1, le=60, description="Días a pronosticar"),
+    db: Session = Depends(get_db),
+):
+    return build_forecast(db, history_days=history_days, horizon_days=horizon_days)
 
 
 @router.post("/reminders/run", summary="Enviar recordatorios ahora")

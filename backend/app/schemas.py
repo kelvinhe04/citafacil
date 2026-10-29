@@ -1,7 +1,7 @@
 """Esquemas Pydantic (validación de entrada/salida de la API)."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -71,6 +71,26 @@ class AppointmentOut(BaseModel):
     service: Optional[ServiceOut] = None
 
 
+class AppointmentCreatedOut(AppointmentOut):
+    """Respuesta al reservar: incluye el token para gestionar la cita (cancelar/reprogramar)."""
+    manage_token: Optional[str] = None
+
+
+class ManageOut(AppointmentOut):
+    """Cita vista por su dueño a través del enlace de autogestión."""
+    can_change: bool = False  # lo completa el router después de validar la cita
+    change_blocked_reason: str = ""
+
+
+class RescheduleIn(BaseModel):
+    start_at: datetime = Field(..., description="Nuevo inicio de la cita (ISO 8601)")
+
+    @field_validator("start_at")
+    @classmethod
+    def _naive_local(cls, v: datetime) -> datetime:
+        return to_local_naive(v)
+
+
 class AppointmentStatusUpdate(BaseModel):
     status: str
 
@@ -91,6 +111,13 @@ class ConfigOut(BaseModel):
     close_hour: int
     slot_interval_minutes: int
     closed_weekdays: list[int]
+
+
+class DayAvailabilityOut(BaseModel):
+    """Un día del calendario: past | closed | full | available."""
+    date: date
+    status: str
+    free_slots: int
 
 
 class StatsOut(BaseModel):

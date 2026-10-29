@@ -1,7 +1,9 @@
 """Lógica de disponibilidad: genera horarios libres y evita el doble-booking."""
 from __future__ import annotations
 
+import calendar
 from datetime import date, datetime, time, timedelta
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -15,21 +17,24 @@ def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: date
     return a_start < b_end and b_start < a_end
 
 
-def _booked_that_day(db: Session, day: date) -> list[models.Appointment]:
+def _booked_that_day(
+    db: Session, day: date, exclude_id: Optional[int] = None
+) -> list[models.Appointment]:
     day_start = datetime.combine(day, time.min)
     day_end = datetime.combine(day, time.max)
-    return (
-        db.query(models.Appointment)
-        .filter(
-            models.Appointment.status != models.STATUS_CANCELLED,
-            models.Appointment.start_at >= day_start,
-            models.Appointment.start_at <= day_end,
-        )
-        .all()
+    q = db.query(models.Appointment).filter(
+        models.Appointment.status != models.STATUS_CANCELLED,
+        models.Appointment.start_at >= day_start,
+        models.Appointment.start_at <= day_end,
     )
+    if exclude_id is not None:  # al reprogramar, la cita propia no debe bloquearse a sí misma
+        q = q.filter(models.Appointment.id != exclude_id)
+    return q.all()
 
 
-def generate_slots(db: Session, service: models.Service, day: date) -> list[str]:
+def generate_slots(
+    db: Session, service: models.Service, day: date, exclude_id: Optional[int] = None
+) -> list[str]:
     """Horas 'HH:MM' disponibles para un servicio en un día dado."""
     if day.weekday() in settings.closed_weekdays_set:
         return []
@@ -37,7 +42,7 @@ def generate_slots(db: Session, service: models.Service, day: date) -> list[str]
     duration = timedelta(minutes=service.duration_min)
     open_dt = datetime.combine(day, time(hour=settings.open_hour))
     close_dt = datetime.combine(day, time(hour=settings.close_hour))
-    booked = _booked_that_day(db, day)
+    booked = _booked_that_day(db, day, exclude_id)
     now = local_now()
 
     slots: list[str] = []
@@ -55,7 +60,9 @@ def generate_slots(db: Session, service: models.Service, day: date) -> list[str]
     return slots
 
 
-def is_slot_free(db: Session, service: models.Service, start_at: datetime) -> bool:
+def is_slot_free(
+    db: Session, service: models.Service, start_at: datetime, exclude_id: Optional[int] = None
+) -> bool:
     """Valida que un inicio concreto esté dentro de horario y libre."""
     if start_at.weekday() in settings.closed_weekdays_set:
         return False
@@ -68,5 +75,38 @@ def is_slot_free(db: Session, service: models.Service, start_at: datetime) -> bo
     if start_at <= local_now():
         return False
 
-    booked = _booked_that_day(db, start_at.date())
+    booked = _booked_that_day(db, start_at.date(), exclude_id)
     return not any(_overlaps(start_at, end_at, b.start_at, b.end_at) for b in booked)
+
+
+# ---------- Calendario mensual (HU-02) ----------
+DAY_PAST = "past"            # día anterior a hoy
+DAY_CLOSED = "closed"        # el negocio no abre ese día de la semana
+DAY_FULL = "full"            # abre, pero no queda ningún horario libre
+DAY_AVAILABLE = "available"  # hay al menos un horario libre
+
+
+def month_availability(
+    db: Session, service: models.Service, year: int, month: int, today: date | None = None
+) -> list[dict]:
+    """Estado de cada día de un mes para pintar el calendario de reservas.
+
+    Reutiliza `generate_slots`, así el calendario y la lista de horarios de un
+    día nunca se contradicen (mismas reglas de horario, pasado y doble-booking).
+    """
+    today = today or local_now().date()
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    result: list[dict] = []
+    for n in range(1, days_in_month + 1):
+        day = date(year, month, n)
+        free = 0
+        if day < today:
+            status = DAY_PAST
+        elif day.weekday() in settings.closed_weekdays_set:
+            status = DAY_CLOSED
+        else:
+            free = len(generate_slots(db, service, day))
+            status = DAY_AVAILABLE if free else DAY_FULL
+        result.append({"date": day, "status": status, "free_slots": free})
+    return result

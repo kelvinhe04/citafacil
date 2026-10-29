@@ -7,7 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
+from ..manage import make_token, manage_url
 from ..availability import generate_slots, is_slot_free
+from ..availability import month_availability  # HU-02: calendario mensual
 from ..config import settings
 from ..database import get_db
 from ..notifications import confirmation_message, send_whatsapp
@@ -45,9 +47,28 @@ def get_availability(
     return generate_slots(db, service, day)
 
 
+@router.get(
+    "/availability/month",
+    response_model=list[schemas.DayAvailabilityOut],
+    summary="Disponibilidad del mes (calendario)",
+)
+def get_month_availability(
+    service_id: int = Query(..., description="ID del servicio"),
+    month: str = Query(
+        ..., pattern=r"^[1-9]\d{3}-(0[1-9]|1[0-2])$", description="Mes en formato YYYY-MM"
+    ),
+    db: Session = Depends(get_db),
+):
+    service = crud.get_service(db, service_id)
+    if not service or not service.active:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+    year, mon = (int(x) for x in month.split("-"))
+    return month_availability(db, service, year, mon)
+
+
 @router.post(
     "/appointments",
-    response_model=schemas.AppointmentOut,
+    response_model=schemas.AppointmentCreatedOut,
     status_code=201,
     summary="Crear una reserva",
 )
@@ -65,7 +86,9 @@ def create_appointment(payload: schemas.AppointmentCreate, db: Session = Depends
 
     # Confirmación por WhatsApp (real si Twilio está configurado; simulada si no)
     body = confirmation_message(
-        settings.business_name, appt.customer_name, service.name, appt.start_at
+        settings.business_name, appt.customer_name, service.name, appt.start_at, manage_url(appt)
     )
     send_whatsapp(appt.customer_phone, body)
-    return appt
+    out = schemas.AppointmentCreatedOut.model_validate(appt)
+    out.manage_token = make_token(appt)
+    return out
