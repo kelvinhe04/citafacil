@@ -192,12 +192,22 @@
 
   function toast(msg, kind){ const t=$("toast"); t.textContent=msg; t.className="toast "+(kind||""); t.style.display="block"; setTimeout(()=>t.style.display="none", 2800); }
 
+  // FastAPI devuelve `detail` como texto, o como lista de objetos cuando falla la validacion (422).
+  function apiError(d, status){
+    if(d && typeof d.detail === "string") return d.detail;
+    if(d && Array.isArray(d.detail)){
+      const m = d.detail.map(e => String((e && e.msg) || "").replace(/^Value error, /, "")).filter(Boolean).join(" · ");
+      if(m) return m;
+    }
+    return "Error " + status;
+  }
+
   async function api(path, opts){
     opts = opts || {};
     opts.headers = Object.assign({"X-Admin-Token": TOKEN}, opts.headers||{});
     const r = await fetch(API + path, opts);
     if(r.status===401 || r.status===422 && path.startsWith("/api/admin")){ /* handled by caller */ }
-    if(!r.ok){ let d; try{d=await r.json()}catch(e){}; const err=new Error((d&&d.detail)||("Error "+r.status)); err.status=r.status; throw err; }
+    if(!r.ok){ let d; try{d=await r.json()}catch(e){}; const err=new Error(apiError(d, r.status)); err.status=r.status; throw err; }
     return r.status===204 ? null : r.json();
   }
 
