@@ -75,12 +75,40 @@
   .slot.sel{background:var(--grad);border-color:transparent;color:#fff}
   .empty{color:var(--muted);font-size:.9rem;padding:10px 0;display:flex;align-items:center;gap:9px}
 
+  /* Calendario de disponibilidad (HU-02) */
+  .cal{margin-bottom:18px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-title{font-weight:700}
+  .cal-nav{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);background:var(--bg-soft);color:var(--text);cursor:pointer;display:grid;place-items:center}
+  .cal-nav:hover:not(:disabled){border-color:var(--accent);color:var(--accent-2)}
+  .cal-nav:disabled{opacity:.35;cursor:not-allowed}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-wd{text-align:center;color:var(--muted);font-size:.75rem;font-weight:700;text-transform:uppercase;padding-bottom:2px}
+  .cal-day{width:100%;max-width:54px;justify-self:center;aspect-ratio:1/1;border-radius:10px;border:1.5px solid var(--border);background:var(--bg-soft);color:var(--text);
+    font:inherit;font-weight:700;font-size:.92rem;display:grid;place-items:center;position:relative;transition:all .16s}
+  .cal-day.available{cursor:pointer;border-color:rgba(34,197,94,.45)}
+  .cal-day.available::after{content:"";position:absolute;bottom:3px;width:5px;height:5px;border-radius:50%;background:var(--ok)}
+  .cal-day.available:hover{border-color:var(--ok);transform:translateY(-1px)}
+  .cal-day.full{color:var(--err);border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.08);text-decoration:line-through;cursor:not-allowed}
+  .cal-day.closed,.cal-day.past{color:var(--muted);opacity:.4;cursor:not-allowed}
+  .cal-day.sel{background:var(--grad);border-color:transparent;color:#fff}
+  .cal-day.sel::after{background:#fff}
+  .cal-day.blank{visibility:hidden}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;color:var(--muted);font-size:.8rem}
+  .cal-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
   .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 24px;border-radius:12px;font-weight:700;font-size:.98rem;
     cursor:pointer;border:none;background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(59,130,246,.3);transition:transform .15s,opacity .2s}
   .btn:hover{transform:translateY(-2px)} .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .btn.ghost{background:transparent;border:1.5px solid var(--border);box-shadow:none;color:var(--text)}
   .summary{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px;font-size:.92rem}
   .summary b{color:var(--accent-2)}
+  .saved{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:6px}
+  .saved .who{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:.95rem}
+  .saved .who i{color:var(--ok)}
+  .saved .who b{color:var(--accent-2)}
+  .saved-links,.privacy{color:var(--muted);font-size:.82rem;margin-top:12px}
+  .saved-links a,.privacy a{color:var(--accent-2);font-weight:600;cursor:pointer}
 
   .result{text-align:center;padding:14px 0}
   .result .ic{font-size:3rem;margin-bottom:12px}
@@ -134,8 +162,20 @@
     <div class="card disabled" id="cardWhen">
       <h2><i class="fa-solid fa-calendar-day"></i> Elige día y hora</h2>
       <p class="hint" id="whenHint">Primero selecciona un servicio.</p>
-      <div class="field"><label for="dateInput">Fecha</label><input type="date" id="dateInput" /></div>
-      <div><label>Horarios disponibles</label><div class="slots" id="slots"><div class="empty">Elige una fecha.</div></div></div>
+      <div class="cal" id="cal">
+        <div class="cal-head">
+          <button class="cal-nav" id="calPrev" aria-label="Mes anterior"><i class="fa-solid fa-chevron-left"></i></button>
+          <span class="cal-title" id="calTitle"></span>
+          <button class="cal-nav" id="calNext" aria-label="Mes siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="cal-grid" id="calGrid"><div class="empty" style="grid-column:1/-1">Primero selecciona un servicio.</div></div>
+        <div class="cal-legend">
+          <span><i style="background:var(--ok)"></i>Disponible</span>
+          <span><i style="background:var(--err)"></i>Ocupado</span>
+          <span><i style="background:var(--border)"></i>Cerrado / pasado</span>
+        </div>
+      </div>
+      <div><label>Horarios disponibles</label><div class="slots" id="slots"><div class="empty">Elige un día disponible en el calendario.</div></div></div>
     </div>
 
     <!-- Paso 3: Datos -->
@@ -143,10 +183,21 @@
       <h2><i class="fa-solid fa-user"></i> Tus datos</h2>
       <p class="hint">Para confirmarte la reserva por WhatsApp.</p>
       <div class="summary" id="summary"></div>
-      <div class="field"><label for="name">Nombre y apellido</label><input id="name" placeholder="Ej: Camila Rojas" autocomplete="name" /></div>
-      <div class="field"><label for="phone">Celular (WhatsApp)</label><input id="phone" placeholder="+56 9 XXXX XXXX" inputmode="tel" autocomplete="tel" /></div>
-      <div class="field"><label for="notes">Nota (opcional)</label><input id="notes" placeholder="Algo que debamos saber" /></div>
-      <button class="btn" id="confirmBtn"><i class="fa-solid fa-check"></i> Confirmar reserva</button>
+      <!-- Cliente recurrente: reserva en un clic con los datos guardados en este navegador -->
+      <div id="savedBox" style="display:none">
+        <div class="saved">
+          <div class="who"><i class="fa-solid fa-user-check"></i><span>Reservar como <b id="savedName"></b> · <span class="mono" id="savedPhone"></span></span></div>
+          <button class="btn" id="quickBtn"><i class="fa-solid fa-bolt"></i> Reservar con mis datos guardados</button>
+          <div class="saved-links"><a id="useOther">Usar otros datos</a> · <a id="forgetMe">Olvidar mis datos</a></div>
+        </div>
+      </div>
+      <div id="formBox">
+        <div class="field"><label for="name">Nombre y apellido</label><input id="name" placeholder="Ej: Camila Rojas" autocomplete="name" /></div>
+        <div class="field"><label for="phone">Celular (WhatsApp)</label><input id="phone" placeholder="+56 9 XXXX XXXX" inputmode="tel" autocomplete="tel" /></div>
+        <div class="field"><label for="notes">Nota (opcional)</label><input id="notes" placeholder="Algo que debamos saber" /></div>
+        <button class="btn" id="confirmBtn"><i class="fa-solid fa-check"></i> Confirmar reserva</button>
+        <p class="privacy">Al reservar, guardamos tu nombre y celular solo en este navegador para que la próxima vez reserves en un clic. <a id="forgetMe2">Olvidar mis datos</a></p>
+      </div>
       <div class="msg" id="formMsg"></div>
     </div>
 
@@ -156,6 +207,7 @@
         <div class="ic"><i class="fa-solid fa-circle-check"></i></div>
         <h3>¡Reserva confirmada!</h3>
         <p id="doneMsg"></p>
+        <a class="btn ghost" id="manageLink" style="display:none;margin-right:8px"><i class="fa-solid fa-sliders"></i> Gestionar mi cita</a>
         <button class="btn" onclick="location.reload()"><i class="fa-solid fa-plus"></i> Hacer otra reserva</button>
       </div>
     </div>
@@ -260,8 +312,7 @@
       }
     }catch(e){ /* usa defaults */ }
 
-    // fecha mínima = hoy
-    $("dateInput").min = new Date().toISOString().slice(0,10);
+    renderCalHeader();
   }
 
   function renderServices(){
@@ -283,30 +334,107 @@
     el.classList.add("sel");
     $("whenHint").textContent = `${s.name} · ${s.duration_min} min · ${money(s.price)}`;
     setStep(2);
-    if($("dateInput").value) loadSlots();
+    // La disponibilidad depende de la duración del servicio: se vuelve a pedir el mes
+    // (el del día ya elegido, si lo hay) y se revalida ese día con el nuevo servicio.
+    if(state.date){ cal.year = Number(state.date.slice(0,4)); cal.month = Number(state.date.slice(5,7)); }
+    loadCalendar();
     $("cardWhen").scrollIntoView({behavior:"smooth", block:"center"});
   }
 
-  $("dateInput").addEventListener("change", loadSlots);
+  /* ====== Calendario de disponibilidad (HU-02) ====== */
+  const pad = n => String(n).padStart(2,"0");
+  const now0 = new Date();
+  const cal = { year: now0.getFullYear(), month: now0.getMonth()+1, days: [] };  // month: 1-12
+  const DAY_LABEL = {full:"sin horarios libres", closed:"cerrado", past:"fecha pasada"};
+  let calReq = 0;
+
+  $("calPrev").addEventListener("click", ()=>moveMonth(-1));
+  $("calNext").addEventListener("click", ()=>moveMonth(1));
+
+  function moveMonth(delta){
+    const d = new Date(cal.year, cal.month-1+delta, 1);
+    cal.year = d.getFullYear(); cal.month = d.getMonth()+1;
+    loadCalendar();
+  }
+
+  function renderCalHeader(){
+    const d = new Date(cal.year, cal.month-1, 1);
+    const t = d.toLocaleDateString("es-CL",{month:"long", year:"numeric"});
+    $("calTitle").textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    // No se navega a meses anteriores al actual.
+    $("calPrev").disabled = cal.year*12 + cal.month <= now0.getFullYear()*12 + now0.getMonth()+1;
+  }
+
+  async function loadCalendar(){
+    if(!state.service) return;
+    renderCalHeader();
+    const grid = $("calGrid");
+    const ym = `${cal.year}-${pad(cal.month)}`;
+    const myReq = ++calReq;
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="spin"></span> Cargando disponibilidad…</div>';
+    try{
+      const days = await api(`/api/availability/month?service_id=${state.service.id}&month=${ym}`, null, 65000);
+      if(myReq !== calReq) return; // llegó tarde: el cliente cambió de mes o de servicio
+      cal.days = days;
+      renderCalendar();
+      if(state.date && state.date.startsWith(ym)){
+        const sel = days.find(d => d.date === state.date);
+        if(sel && sel.status === "available") loadSlots(); else clearDay();
+      }
+    }catch(e){
+      if(myReq !== calReq) return;
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Error cargando el calendario. '
+        + '<a onclick="loadCalendar()" style="color:var(--accent-2);cursor:pointer;font-weight:600">Reintentar</a></div>';
+    }
+  }
+
+  function renderCalendar(){
+    const grid = $("calGrid");
+    grid.innerHTML = "";
+    ["Lu","Ma","Mi","Ju","Vi","Sá","Do"].forEach(w=>{
+      const h = document.createElement("div"); h.className = "cal-wd"; h.textContent = w; grid.appendChild(h);
+    });
+    // Semana de lunes a domingo: huecos antes del día 1.
+    const offset = (new Date(cal.year, cal.month-1, 1).getDay() + 6) % 7;
+    for(let i=0; i<offset; i++){ const b = document.createElement("div"); b.className = "cal-day blank"; grid.appendChild(b); }
+    cal.days.forEach(d=>{
+      const n = Number(d.date.slice(8));
+      const b = document.createElement("button");
+      b.className = "cal-day " + d.status + (d.date === state.date ? " sel" : "");
+      b.dataset.date = d.date;
+      b.textContent = n;
+      const info = d.status === "available"
+        ? `${d.free_slots} horario${d.free_slots===1?"":"s"} libre${d.free_slots===1?"":"s"}`
+        : DAY_LABEL[d.status] || d.status;
+      b.title = info;
+      b.setAttribute("aria-label", `${n}: ${info}`);
+      if(d.status === "available") b.onclick = ()=>selectDay(d.date);
+      else b.setAttribute("aria-disabled", "true");
+      grid.appendChild(b);
+    });
+  }
+
+  function selectDay(iso){
+    state.date = iso;
+    document.querySelectorAll(".cal-day").forEach(x=>x.classList.toggle("sel", x.dataset.date === iso));
+    setStep(2);
+    loadSlots();
+  }
+
+  function clearDay(){
+    state.date = null; state.time = null;
+    $("slots").innerHTML = '<div class="empty">Elige un día disponible en el calendario.</div>';
+  }
 
   // Token incremental: solo la última petición pinta el resultado (evita que una
-  // respuesta vieja pise a la nueva cuando se teclea la fecha dígito a dígito).
+  // respuesta vieja pise a la nueva cuando se cambia de día rápido).
   let slotsReq = 0;
 
   async function loadSlots(){
-    if(!state.service) return;
-    const date = $("dateInput").value;
-    // Ignorar fechas incompletas/ inválidas o anteriores a hoy (al teclear se generan
-    // años intermedios como 0002, 0020… que no deben consultarse).
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
-    const min = $("dateInput").min;
+    if(!state.service || !state.date) return;
+    const date = state.date;
     const box = $("slots");
-    if(min && date < min){
-      box.innerHTML = '<div class="empty">Elige una fecha desde hoy en adelante.</div>';
-      return;
-    }
-
-    state.date = date; state.time = null;
+    state.time = null;
     const myReq = ++slotsReq;
     box.innerHTML = '<div class="empty"><span class="spin"></span> Buscando horarios…</div>';
     try{
@@ -337,19 +465,59 @@
     $("cardWho").scrollIntoView({behavior:"smooth", block:"center"});
   }
 
-  $("confirmBtn").addEventListener("click", async ()=>{
-    const name = $("name").value.trim(), phone = $("phone").value.trim();
+  /* ====== Datos guardados del cliente recurrente (solo en este navegador) ====== */
+  const SAVED_KEY = "citafacil_customer";
+  function loadSaved(){
+    try{
+      const v = JSON.parse(localStorage.getItem(SAVED_KEY) || "null");
+      return v && v.name && v.phone ? v : null;
+    }catch(e){ return null; }
+  }
+  function saveCustomer(name, phone){
+    try{ localStorage.setItem(SAVED_KEY, JSON.stringify({name, phone})); }catch(e){ /* modo privado: se ignora */ }
+  }
+  function forgetCustomer(){
+    try{ localStorage.removeItem(SAVED_KEY); }catch(e){}
+    $("name").value = ""; $("phone").value = "";
+    renderWho();
+  }
+  // Muestra la reserva rápida si hay datos guardados; si no (o si elige "usar otros datos"), el formulario.
+  function renderWho(showForm){
+    const s = loadSaved();
+    const quick = !!s && !showForm;
+    $("savedBox").style.display = quick ? "block" : "none";
+    $("formBox").style.display = quick ? "none" : "block";
+    if(s){
+      $("savedName").textContent = s.name;    // textContent: el nombre guardado nunca se interpreta como HTML
+      $("savedPhone").textContent = s.phone;
+      if(!$("name").value) $("name").value = s.name;
+      if(!$("phone").value) $("phone").value = s.phone;
+    }
+  }
+  $("useOther").onclick = ()=>renderWho(true);
+  $("forgetMe").onclick = forgetCustomer;
+  $("forgetMe2").onclick = forgetCustomer;
+
+  async function book(name, phone, notes, btn){
     const msg = $("formMsg"); msg.className="msg";
     if(name.length<2 || !phone){ msg.className="msg err"; msg.textContent="Completa tu nombre y celular."; return; }
     if(!state.service || !state.date || !state.time){ msg.className="msg err"; msg.textContent="Elige servicio, día y hora."; return; }
-    const btn=$("confirmBtn"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Confirmando…';
+    const label = btn.innerHTML;
+    btn.disabled=true; btn.innerHTML='<span class="spin"></span> Confirmando…';
     try{
       const payload={customer_name:name, customer_phone:phone, service_id:state.service.id,
-        start_at:`${state.date}T${state.time}:00`, notes:$("notes").value.trim()};
-      await api("/api/appointments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}, 65000);
+        start_at:`${state.date}T${state.time}:00`, notes:notes};
+      const appt = await api("/api/appointments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}, 65000);
+      // Se guarda lo que devuelve el servidor (celular ya normalizado a +56...), no lo tecleado.
+      saveCustomer(appt.customer_name, appt.customer_phone);
       const d=new Date(state.date+"T"+state.time);
       const fecha=d.toLocaleDateString("es-CL",{weekday:"long",day:"2-digit",month:"long"});
-      $("doneMsg").innerHTML=`Te esperamos el <b>${fecha}</b> a las <b>${state.time}</b>.<br>Te enviamos la confirmación por WhatsApp a ${phone}.`;
+      $("doneMsg").innerHTML=`Te esperamos el <b>${fecha}</b> a las <b>${state.time}</b>.<br>Te enviamos la confirmación por WhatsApp a ${appt.customer_phone}.`;
+      if(appt && appt.manage_token){  // enlace para cancelar/reprogramar esta cita (HU-04)
+        const ml=$("manageLink");
+        ml.href="manage.html?t="+encodeURIComponent(appt.manage_token)+"&api="+encodeURIComponent(API);
+        ml.style.display="inline-flex";
+      }
       ["cardSvc","cardWhen","cardWho"].forEach(id=>$(id).style.display="none");
       document.querySelector(".steps").style.display="none";
       $("cardDone").style.display="block";
@@ -360,9 +528,18 @@
       // Solo se recargan los horarios si el elegido se ocupo (409). Con otros errores (p. ej. celular
       // invalido) se conserva la hora elegida para que el cliente corrija y reintente.
       if(e.status===409) loadSlots();
-    }finally{ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> Confirmar reserva'; }
+    }finally{ btn.disabled=false; btn.innerHTML=label; }
+  }
+
+  $("confirmBtn").addEventListener("click", ()=>
+    book($("name").value.trim(), $("phone").value.trim(), $("notes").value.trim(), $("confirmBtn")));
+  $("quickBtn").addEventListener("click", ()=>{
+    const s = loadSaved();
+    if(!s){ renderWho(); return; }
+    book(s.name, s.phone, "", $("quickBtn"));
   });
 
+  renderWho();
   init();
 </script>
 </body>
