@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CitaFácil — Gestiona tu cita</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<style>
+  :root{
+    --bg:#0d1117; --bg-soft:#161b22; --card:#161b22; --border:#232a34;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#3b82f6; --accent-2:#22d3ee;
+    --ok:#22c55e; --err:#f87171; --warn:#fbbf24;
+    --grad:linear-gradient(135deg,#3b82f6 0%,#22d3ee 100%);
+    --shadow:0 12px 40px rgba(0,0,0,.35); --radius:16px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);
+    line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+  a{color:inherit;text-decoration:none}
+  .wrap{width:100%;max-width:640px;margin:0 auto;padding:0 22px}
+  .mono{font-family:'JetBrains Mono',monospace}
+  header{border-bottom:1px solid var(--border);background:rgba(13,17,23,.72)}
+  nav{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:10px}
+  .brand i{color:var(--accent)}
+  .home-link{color:var(--muted);font-size:.9rem;font-weight:600}
+  .home-link:hover{color:var(--accent-2)}
+  main{flex:1;padding:34px 0 60px}
+  h1{font-size:clamp(1.5rem,4.5vw,2rem);font-weight:800;margin-bottom:6px}
+  .sub{color:var(--muted);margin-bottom:24px}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow);margin-bottom:20px}
+  .card h2{font-size:1.05rem;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .card h2 i{color:var(--accent)}
+  .row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.95rem}
+  .row:last-of-type{border-bottom:none}
+  .row .k{color:var(--muted)}
+  .row .v{font-weight:600;text-align:right}
+  .badge{display:inline-block;padding:2px 11px;border-radius:99px;font-size:.78rem;font-weight:700}
+  .b-pending{background:rgba(251,191,36,.14);color:var(--warn)}
+  .b-confirmed,.b-done{background:rgba(34,197,94,.14);color:var(--ok)}
+  .b-cancelled{background:rgba(248,113,113,.14);color:var(--err)}
+
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:12px;font-weight:700;font-size:.95rem;
+    cursor:pointer;border:none;background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(59,130,246,.3);transition:transform .15s,opacity .2s}
+  .btn:hover{transform:translateY(-2px)} .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn.ghost{background:transparent;border:1.5px solid var(--border);box-shadow:none;color:var(--text)}
+  .btn.danger{background:transparent;border:1.5px solid rgba(248,113,113,.5);box-shadow:none;color:var(--err)}
+
+  label{display:block;font-size:.85rem;color:var(--muted);margin:0 0 7px;font-weight:600}
+  input[type=date]{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;color:var(--text);
+    font:inherit;padding:12px 14px;color-scheme:dark;margin-bottom:16px}
+  input:focus{outline:none;border-color:var(--accent)}
+  .slots{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px}
+  .slot{background:var(--bg-soft);border:1.5px solid var(--border);border-radius:10px;padding:9px 15px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:.9rem;transition:all .16s}
+  .slot:hover{border-color:var(--accent);color:var(--accent-2)}
+  .slot.sel{background:var(--grad);border-color:transparent;color:#fff}
+  .empty{color:var(--muted);font-size:.9rem;padding:6px 0}
+  .msg{border-radius:10px;padding:12px 14px;font-size:.92rem;margin-top:16px}
+  .msg.err{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);color:#fecaca}
+  .msg.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#bbf7d0}
+  .msg.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fde68a}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{border-top:1px solid var(--border);padding:22px 0;text-align:center;color:var(--muted);font-size:.85rem}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <div class="brand"><i class="fa-solid fa-calendar-check"></i><span id="brandName">CitaFácil</span></div>
+      <a class="home-link" id="homeLink" href="index.html"><i class="fa-solid fa-plus"></i> Nueva reserva</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Gestiona tu cita</h1>
+    <p class="sub">Cancélala o cámbiala de fecha sin tener que llamar al negocio.</p>
+
+    <div id="loading" class="empty"><span class="spin"></span> Buscando tu cita…</div>
+    <div id="fatal" class="msg err" hidden></div>
+
+    <div id="view" hidden>
+      <div class="card">
+        <h2><i class="fa-solid fa-ticket"></i> Tu cita</h2>
+        <div class="row"><span class="k">Servicio</span><span class="v" id="vService"></span></div>
+        <div class="row"><span class="k">Fecha y hora</span><span class="v" id="vWhen"></span></div>
+        <div class="row"><span class="k">A nombre de</span><span class="v" id="vName"></span></div>
+        <div class="row"><span class="k">Estado</span><span class="v"><span class="badge" id="vStatus"></span></span></div>
+        <div class="msg warn" id="blocked" hidden></div>
+        <div class="actions" id="actions">
+          <button class="btn" id="btnResched"><i class="fa-solid fa-calendar-days"></i> Reprogramar</button>
+          <button class="btn danger" id="btnCancel"><i class="fa-solid fa-ban"></i> Cancelar cita</button>
+        </div>
+      </div>
+
+      <div class="card" id="reschedCard" hidden>
+        <h2><i class="fa-solid fa-calendar-day"></i> Elige la nueva fecha y hora</h2>
+        <label for="newDate">Fecha</label>
+        <input type="date" id="newDate" />
+        <label>Horarios disponibles</label>
+        <div class="slots" id="slots"><div class="empty">Elige una fecha.</div></div>
+        <div class="actions" style="margin-top:0">
+          <button class="btn" id="btnConfirm" disabled><i class="fa-solid fa-check"></i> Confirmar nuevo horario</button>
+          <button class="btn ghost" id="btnBack">Volver</button>
+        </div>
+      </div>
+
+      <div class="msg" id="result" hidden></div>
+    </div>
+  </div>
+</main>
+
+<footer><div class="wrap">Hecho con CitaFácil</div></footer>
+
+<script>
+  /* ====== CONFIG (misma lógica que index.html) ====== */
+  const DEFAULT_API = "https://citafacil-api.onrender.com";
+  const params = new URLSearchParams(location.search);
+  const qpApi = params.get("api");
+  if (qpApi) { try { localStorage.setItem("citafacil_api", qpApi); } catch (e) {} }
+  let stored = null; try { stored = localStorage.getItem("citafacil_api"); } catch (e) {}
+  const API = (stored || DEFAULT_API).replace(/\/$/, "");
+  const TOKEN = params.get("t") || "";
+  const $ = id => document.getElementById(id);
+
+  // FastAPI devuelve `detail` como texto, o como lista de objetos cuando falla la validacion (422).
+  function apiError(data, status){
+    if (data && typeof data.detail === "string") return data.detail;
+    if (data && Array.isArray(data.detail)) {
+      const m = data.detail.map(e => String((e && e.msg) || "").replace(/^Value error, /, "")).filter(Boolean).join(" · ");
+      if (m) return m;
+    }
+    return "Error " + status;
+  }
+
+  async function api(path, opts){
+    const r = await fetch(API + path, opts || {});
+    let data = null; try { data = await r.json(); } catch (e) {}
+    if (!r.ok) { const err = new Error(apiError(data, r.status)); err.status = r.status; throw err; }
+    return data;
+  }
+  const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
+
+  const STATUS = {pending: "Pendiente", confirmed: "Confirmada", cancelled: "Cancelada", done: "Realizada"};
+  const fmtWhen = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-CL", {weekday: "long", day: "2-digit", month: "long"}) + " a las " +
+           d.toLocaleTimeString("es-CL", {hour: "2-digit", minute: "2-digit", hour12: false});
+  };
+  const todayLocal = () => new Date().toLocaleDateString("sv-SE");   // YYYY-MM-DD en hora local (no UTC)
+
+  let appt = null, newTime = null, slotsReq = 0;
+
+  function show(a){
+    appt = a;
+    // textContent siempre: nada de lo que viene del servidor se interpreta como HTML
+    $("vService").textContent = a.service ? a.service.name : "—";
+    $("vWhen").textContent = fmtWhen(a.start_at);
+    $("vName").textContent = a.customer_name;
+    const st = $("vStatus"); st.textContent = STATUS[a.status] || a.status; st.className = "badge b-" + a.status;
+    const blocked = $("blocked");
+    blocked.hidden = a.can_change || !a.change_blocked_reason;
+    blocked.textContent = a.change_blocked_reason || "";
+    $("actions").hidden = !a.can_change;
+    $("loading").hidden = true; $("view").hidden = false;
+  }
+
+  function notice(kind, text){
+    const r = $("result"); r.className = "msg " + kind; r.textContent = text; r.hidden = false;
+  }
+
+  async function init(){
+    if (!TOKEN) { $("loading").hidden = true; const f = $("fatal"); f.hidden = false;
+      f.textContent = "Falta el enlace de tu cita. Abre el enlace completo que te enviamos."; return; }
+    // Conserva la API elegida al volver a la página de reservas
+    $("homeLink").href = "index.html" + (qpApi ? "?api=" + encodeURIComponent(qpApi) : "");
+    try {
+      show(await api("/api/manage/" + encodeURIComponent(TOKEN)));
+    } catch (e) {
+      $("loading").hidden = true; const f = $("fatal"); f.hidden = false;
+      f.textContent = e.status === 404 ? "Este enlace no es válido o la cita ya no existe."
+                                       : "No pudimos conectar con el servidor (" + API + "). Intenta de nuevo en un momento.";
+    }
+  }
+
+  /* ---- Cancelar ---- */
+  $("btnCancel").addEventListener("click", async () => {
+    if (!confirm("¿Seguro que quieres cancelar tu cita? Esta acción no se puede deshacer.")) return;
+    const b = $("btnCancel"), label = b.innerHTML; b.disabled = true; b.innerHTML = '<span class="spin"></span> Cancelando…';
+    try {
+      show(await post("/api/manage/" + encodeURIComponent(TOKEN) + "/cancel"));
+      $("reschedCard").hidden = true;
+      notice("ok", "Tu cita fue cancelada. Te enviamos la confirmación por WhatsApp.");
+    } catch (e) { notice("err", e.message); }
+    finally { b.disabled = false; b.innerHTML = label; }
+  });
+
+  /* ---- Reprogramar ---- */
+  $("btnResched").addEventListener("click", () => {
+    $("reschedCard").hidden = false; $("result").hidden = true;
+    const d = $("newDate"); d.min = todayLocal();
+    $("reschedCard").scrollIntoView({behavior: "smooth", block: "center"});
+  });
+  $("btnBack").addEventListener("click", () => { $("reschedCard").hidden = true; });
+
+  $("newDate").addEventListener("change", loadSlots);
+  async function loadSlots(){
+    const date = $("newDate").value, box = $("slots");
+    newTime = null; $("btnConfirm").disabled = true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < $("newDate").min) { box.innerHTML = '<div class="empty">Elige una fecha desde hoy en adelante.</div>'; return; }
+    const mine = ++slotsReq;
+    box.innerHTML = '<div class="empty"><span class="spin"></span> Buscando horarios…</div>';
+    try {
+      const list = await api("/api/manage/" + encodeURIComponent(TOKEN) + "/availability?date=" + date);
+      if (mine !== slotsReq) return;
+      box.innerHTML = "";
+      if (!list.length) { box.innerHTML = '<div class="empty">No hay horarios ese día. Prueba otra fecha.</div>'; return; }
+      list.forEach(t => {
+        const s = document.createElement("div"); s.className = "slot"; s.textContent = t;
+        s.onclick = () => {
+          newTime = t; document.querySelectorAll(".slot").forEach(x => x.classList.remove("sel"));
+          s.classList.add("sel"); $("btnConfirm").disabled = false;
+        };
+        box.appendChild(s);
+      });
+    } catch (e) {
+      if (mine !== slotsReq) return;
+      box.innerHTML = ""; const d = document.createElement("div"); d.className = "empty"; d.textContent = e.message; box.appendChild(d);
+    }
+  }
+
+  $("btnConfirm").addEventListener("click", async () => {
+    const date = $("newDate").value; if (!date || !newTime) return;
+    const b = $("btnConfirm"), label = b.innerHTML; b.disabled = true; b.innerHTML = '<span class="spin"></span> Guardando…';
+    try {
+      show(await post("/api/manage/" + encodeURIComponent(TOKEN) + "/reschedule", {start_at: date + "T" + newTime + ":00"}));
+      $("reschedCard").hidden = true;
+      notice("ok", "¡Listo! Tu cita fue reprogramada. Te enviamos la confirmación por WhatsApp.");
+    } catch (e) {
+      notice("err", e.status === 409 ? "Ese horario ya fue tomado. Elige otro." : e.message);
+      loadSlots();
+    } finally { b.innerHTML = label; b.disabled = !newTime; }
+  });
+
+  init();
+</script>
+</body>
+</html>

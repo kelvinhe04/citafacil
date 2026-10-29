@@ -62,7 +62,11 @@ def create_appointment(
 
 
 def list_appointments(
-    db: Session, status: Optional[str] = None, day: Optional[date] = None
+    db: Session,
+    status: Optional[str] = None,
+    day: Optional[date] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
 ) -> list[models.Appointment]:
     q = db.query(models.Appointment)
     if status:
@@ -72,6 +76,10 @@ def list_appointments(
             models.Appointment.start_at >= datetime.combine(day, time.min),
             models.Appointment.start_at <= datetime.combine(day, time.max),
         )
+    if date_from:  # rango inclusive (lo usa la exportación a CSV)
+        q = q.filter(models.Appointment.start_at >= datetime.combine(date_from, time.min))
+    if date_to:
+        q = q.filter(models.Appointment.start_at <= datetime.combine(date_to, time.max))
     return q.order_by(models.Appointment.start_at).all()
 
 
@@ -81,6 +89,17 @@ def get_appointment(db: Session, appt_id: int) -> Optional[models.Appointment]:
 
 def set_status(db: Session, appt: models.Appointment, status: str) -> models.Appointment:
     appt.status = status
+    db.commit()
+    db.refresh(appt)
+    return appt
+
+
+def reschedule_appointment(
+    db: Session, appt: models.Appointment, start_at: datetime, end_at: datetime
+) -> models.Appointment:
+    appt.start_at = start_at
+    appt.end_at = end_at
+    appt.reminder_sent = False  # el recordatorio debe salir para la nueva fecha
     db.commit()
     db.refresh(appt)
     return appt
