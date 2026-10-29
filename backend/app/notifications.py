@@ -20,12 +20,33 @@ def _fmt_dt(dt: datetime) -> str:
     return f"{_DIAS[dt.weekday()]} {dt.day:02d}-{dt.month:02d} a las {dt.strftime('%H:%M')}"
 
 
-def confirmation_message(business: str, customer_name: str, service_name: str, start_at: datetime) -> str:
-    return (
+def confirmation_message(
+    business: str, customer_name: str, service_name: str, start_at: datetime, manage_url: str = ""
+) -> str:
+    msg = (
         f"¡Hola {customer_name}! 👋 Tu reserva en {business} quedó registrada:\n"
         f"✂️ {service_name}\n"
         f"🗓️ {_fmt_dt(start_at)}\n\n"
         f"Te enviaremos un recordatorio antes. ¡Te esperamos!"
+    )
+    if manage_url:
+        msg += f"\n\n¿Necesitas cambiarla? Cancela o reprograma aquí: {manage_url}"
+    return msg
+
+
+def cancellation_message(business: str, customer_name: str, service_name: str, start_at: datetime) -> str:
+    return (
+        f"Hola {customer_name}, tu cita en {business} fue cancelada:\n"
+        f"{service_name} — {_fmt_dt(start_at)}\n\n"
+        f"Cuando quieras, puedes reservar una nueva hora."
+    )
+
+
+def reschedule_message(business: str, customer_name: str, service_name: str, start_at: datetime) -> str:
+    return (
+        f"Hola {customer_name}, tu cita en {business} fue reprogramada:\n"
+        f"{service_name} — nueva fecha: {_fmt_dt(start_at)}\n\n"
+        f"¡Te esperamos!"
     )
 
 

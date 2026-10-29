@@ -94,6 +94,17 @@ def set_status(db: Session, appt: models.Appointment, status: str) -> models.App
     return appt
 
 
+def reschedule_appointment(
+    db: Session, appt: models.Appointment, start_at: datetime, end_at: datetime
+) -> models.Appointment:
+    appt.start_at = start_at
+    appt.end_at = end_at
+    appt.reminder_sent = False  # el recordatorio debe salir para la nueva fecha
+    db.commit()
+    db.refresh(appt)
+    return appt
+
+
 def delete_appointment(db: Session, appt: models.Appointment) -> None:
     db.delete(appt)
     db.commit()

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
+from ..manage import make_token, manage_url
 from ..availability import generate_slots, is_slot_free
 from ..config import settings
 from ..database import get_db
@@ -47,7 +48,7 @@ def get_availability(
 
 @router.post(
     "/appointments",
-    response_model=schemas.AppointmentOut,
+    response_model=schemas.AppointmentCreatedOut,
     status_code=201,
     summary="Crear una reserva",
 )
@@ -65,7 +66,9 @@ def create_appointment(payload: schemas.AppointmentCreate, db: Session = Depends
 
     # Confirmación por WhatsApp (real si Twilio está configurado; simulada si no)
     body = confirmation_message(
-        settings.business_name, appt.customer_name, service.name, appt.start_at
+        settings.business_name, appt.customer_name, service.name, appt.start_at, manage_url(appt)
     )
     send_whatsapp(appt.customer_phone, body)
-    return appt
+    out = schemas.AppointmentCreatedOut.model_validate(appt)
+    out.manage_token = make_token(appt)
+    return out
