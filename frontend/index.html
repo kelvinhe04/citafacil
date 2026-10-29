@@ -238,13 +238,23 @@
 
   const money = n => "$" + (n||0).toLocaleString("es-CL");
 
+  // FastAPI devuelve `detail` como texto, o como lista de objetos cuando falla la validacion (422).
+  function apiError(d, status){
+    if(d && typeof d.detail === "string") return d.detail;
+    if(d && Array.isArray(d.detail)){
+      const m = d.detail.map(e => String((e && e.msg) || "").replace(/^Value error, /, "")).filter(Boolean).join(" · ");
+      if(m) return m;
+    }
+    return "Error " + status;
+  }
+
   // fetch con timeout opcional (AbortController) para no colgarse en un arranque en frío.
   async function api(path, opts, timeoutMs){
     const ctrl = new AbortController();
     const t = timeoutMs ? setTimeout(()=>ctrl.abort(), timeoutMs) : null;
     try{
       const r = await fetch(API + path, Object.assign({}, opts||{}, {signal: ctrl.signal}));
-      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; throw new Error((d&&d.detail) || ("Error "+r.status)); }
+      if(!r.ok){ let d; try{d=await r.json()}catch(e){}; const err = new Error(apiError(d, r.status)); err.status = r.status; throw err; }
       return r.status===204 ? null : r.json();
     } finally { if(t) clearTimeout(t); }
   }
@@ -514,8 +524,10 @@
       $("cardDone").scrollIntoView({behavior:"smooth",block:"center"});
     }catch(e){
       msg.className="msg err";
-      msg.textContent = e.message==="Error 409" ? "Ese horario ya fue tomado. Elige otro." : e.message;
-      loadSlots();
+      msg.textContent = e.status===409 ? "Ese horario ya fue tomado. Elige otro." : e.message;
+      // Solo se recargan los horarios si el elegido se ocupo (409). Con otros errores (p. ej. celular
+      // invalido) se conserva la hora elegida para que el cliente corrija y reintente.
+      if(e.status===409) loadSlots();
     }finally{ btn.disabled=false; btn.innerHTML=label; }
   }
 
