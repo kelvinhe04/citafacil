@@ -354,6 +354,8 @@
   function moveMonth(delta){
     const d = new Date(cal.year, cal.month-1+delta, 1);
     cal.year = d.getFullYear(); cal.month = d.getMonth()+1;
+    // Los horarios en pantalla son del día elegido: si no pertenece al mes nuevo, se limpian.
+    if(state.date && !state.date.startsWith(`${cal.year}-${pad(cal.month)}`)) clearDay();
     loadCalendar();
   }
 
@@ -423,7 +425,10 @@
 
   function clearDay(){
     state.date = null; state.time = null;
+    slotsReq++;  // descarta una petición de horarios en curso, para que no repinte la lista
     $("slots").innerHTML = '<div class="empty">Elige un día disponible en el calendario.</div>';
+    $("summary").innerHTML = "";
+    setStep(2);  // sin día elegido no se puede seguir en el paso 3 con la fecha anterior
   }
 
   // Token incremental: solo la última petición pinta el resultado (evita que una
